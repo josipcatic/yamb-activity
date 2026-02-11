@@ -15,15 +15,21 @@ const CATEGORIES = [
   { id: 'yahtzee', label: 'Yahtzee' }
 ];
 
+const PHASES = {
+  ROLLING: 'ROLLING',
+  SELECTING_SCORE: 'SELECTING_SCORE',
+  GAME_OVER: 'GAME_OVER'
+};
+
 let gameState = null;
 
-// Initialize game state based on number of players
-function initializeGame(numPlayers) {
-  gameState = {
+// Create initial game state based on number of players
+function createInitialState(numPlayers) {
+  return {
     dice: [1, 1, 1, 1, 1],
     locked: [false, false, false, false, false],
     rollsLeft: 3,
-    phase: "ROLLING", // ROLLING | SELECTING_SCORE
+    phase: PHASES.ROLLING,
     currentPlayer: 0,
     numPlayers: numPlayers,
     players: Array.from({ length: numPlayers }, (_, i) => ({
@@ -32,6 +38,11 @@ function initializeGame(numPlayers) {
       scores: {}
     }))
   };
+}
+
+// Initialize game with players
+function initializeGame(numPlayers) {
+  gameState = createInitialState(numPlayers);
   render();
 }
 
@@ -42,6 +53,12 @@ function render() {
   if (!gameState) {
     app.innerHTML = renderSetup();
     setupEventListeners();
+    return;
+  }
+  
+  if (isGameOver(gameState)) {
+    app.innerHTML = renderGameOver();
+    setupGameOverEventListeners();
     return;
   }
   
@@ -67,6 +84,53 @@ function renderSetup() {
   `;
 }
 
+// Render game over screen
+function renderGameOver() {
+  const totals = calculatePlayerTotals(gameState);
+  const winner = findWinner(totals);
+  const sortedPlayers = gameState.players.map((p, i) => ({
+    ...p,
+    total: totals[i]
+  })).sort((a, b) => b.total - a.total);
+  
+  return `
+    <div class="container">
+      <h1>Game Over!</h1>
+      
+      <div class="game-over-results">
+        <div class="winner-section">
+          <h2>🎉 ${gameState.players[winner].name} Wins! 🎉</h2>
+          <h3>Final Score: ${totals[winner]}</h3>
+        </div>
+        
+        <div class="leaderboard">
+          <h3>Final Scores</h3>
+          <table class="scorecard">
+            <thead>
+              <tr>
+                <th>Position</th>
+                <th>Player</th>
+                <th>Total Score</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${sortedPlayers.map((p, i) => `
+                <tr class="${i === 0 ? 'winner-row' : ''}">
+                  <td>${i + 1}</td>
+                  <td>${p.name}</td>
+                  <td><strong>${p.total}</strong></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+        
+        <button id="playAgainBtn" class="roll-btn">Play Again</button>
+      </div>
+    </div>
+  `;
+}
+
 // Render game screen
 function renderGame() {
   const currentPlayer = gameState.players[gameState.currentPlayer];
@@ -82,14 +146,14 @@ function renderGame() {
 
       <div class="dice-container">
         ${gameState.dice.map((die, i) => `
-          <div class="die ${gameState.locked[i] ? 'locked' : ''}" id="die-${i}">
+          <div class="die ${gameState.locked[i] ? 'locked' : ''}" id="die-${i}" data-die-index="${i}">
             ${die}
           </div>
         `).join('')}
       </div>
       
-      <button id="rollButton" class="roll-btn" ${gameState.phase !== "ROLLING" ? 'disabled' : ''}>
-        ${gameState.phase === "ROLLING" ? "Roll Dice" : "Select a score"}
+      <button id="rollButton" class="roll-btn" ${gameState.phase !== PHASES.ROLLING ? 'disabled' : ''}>
+        ${gameState.phase === PHASES.ROLLING ? "Roll Dice" : "Select a score"}
       </button>
 
       <h2>Score Card</h2>
@@ -110,8 +174,7 @@ function renderGame() {
                 return `
                   <td class="score-cell ${score !== undefined ? 'filled' : ''} ${isSelectable ? 'selectable' : ''}" 
                       data-category="${category.id}" 
-                      data-player="${playerIdx}"
-                      ${isSelectable ? `onclick="handleScoreSelection('${category.id}')"` : ''}>
+                      data-player="${playerIdx}">
                     ${score !== undefined ? score : ''}
                   </td>
                 `;
@@ -134,92 +197,151 @@ function setupEventListeners() {
   });
 }
 
+// Setup event listeners for game over screen
+function setupGameOverEventListeners() {
+  const playAgainBtn = document.getElementById('playAgainBtn');
+  if (playAgainBtn) {
+    playAgainBtn.addEventListener('click', () => {
+      gameState = null;
+      render();
+    });
+  }
+}
+
 // Setup event listeners for game screen
 function setupGameEventListeners() {
   const rollButton = document.getElementById('rollButton');
-  if (rollButton && gameState.phase === "ROLLING") {
-    rollButton.addEventListener('click', rollDice);
+  
+  // Roll button handler
+  if (rollButton && gameState.phase === PHASES.ROLLING) {
+    rollButton.addEventListener('click', () => {
+      gameState = rollDice(gameState);
+      render();
+    });
   }
   
-  // Add click handlers for dice
-  gameState.dice.forEach((_, i) => {
-    const dieElement = document.getElementById(`die-${i}`);
-    if (dieElement) {
-      dieElement.addEventListener('click', () => lockDice(i));
-    }
-  });
+  // Dice click handlers with event delegation
+  const diceContainer = document.querySelector('.dice-container');
+  if (diceContainer) {
+    diceContainer.addEventListener('click', (e) => {
+      const die = e.target.closest('.die');
+      if (die) {
+        const index = parseInt(die.dataset.dieIndex);
+        gameState = lockDice(gameState, index);
+        render();
+      }
+    });
+  }
+  
+  // Score cell click handlers with event delegation
+  const scoreTable = document.querySelector('.scorecard');
+  if (scoreTable) {
+    scoreTable.addEventListener('click', (e) => {
+      const cell = e.target.closest('.score-cell.selectable');
+      if (cell) {
+        const category = cell.dataset.category;
+        gameState = selectScore(gameState, category);
+        render();
+      }
+    });
+  }
 }
 
 // Roll the dice
-function rollDice() {
-  if (gameState.phase !== "ROLLING") return;
-  
+function rollDice(state) {
+  if (state.phase !== PHASES.ROLLING) return state;
+
+  const newDice = [...state.dice];
+
   for (let i = 0; i < 5; i++) {
-    if (!gameState.locked[i] && gameState.rollsLeft > 0) {
-      gameState.dice[i] = Math.floor(Math.random() * 6) + 1;
+    if (!state.locked[i] && state.rollsLeft > 0) {
+      newDice[i] = Math.floor(Math.random() * 6) + 1;
     }
   }
-  
-  if (gameState.rollsLeft > 0) {
-    gameState.rollsLeft--;
-  }
-  
-  // If no rolls left, switch to score selection phase
-  if (gameState.rollsLeft === 0) {
-    gameState.phase = "SELECTING_SCORE";
-  }
-  
-  render();
+
+  return {
+    ...state,
+    dice: newDice,
+    rollsLeft: state.rollsLeft - 1,
+    phase: state.rollsLeft - 1 === 0 ? PHASES.SELECTING_SCORE : state.phase
+  };
 }
 
 // Lock/unlock a die
-function lockDice(index) {
-  if (gameState.phase !== "ROLLING" || gameState.rollsLeft === 3) return;
+function lockDice(state, index) {
+  if (state.phase !== PHASES.ROLLING || state.rollsLeft === 3) {
+    return state;
+  }
   
-  gameState.locked[index] = !gameState.locked[index];
-  render();
+  const newState = { ...state, locked: [...state.locked] };
+  newState.locked[index] = !newState.locked[index];
+  return newState;
 }
 
 // Handle score selection
-function handleScoreSelection(category) {
-  const currentPlayer = gameState.players[gameState.currentPlayer];
+function selectScore(state, category) {
+  const currentPlayer = state.players[state.currentPlayer];
   
-  if (gameState.phase !== "SELECTING_SCORE") return;
-  if (currentPlayer.scores[category] !== undefined) return;
+  if (state.phase !== PHASES.SELECTING_SCORE) {
+    return state;
+  }
+  if (currentPlayer.scores[category] !== undefined) {
+    return state;
+  }
   
   // Calculate score based on category and current dice
-  let score = calculateScore(category);
-  currentPlayer.scores[category] = score;
+  const score = calculateScore(state.dice, category);
+  
+  const newState = { ...state };
+  newState.players = newState.players.map((p, i) => 
+    i === state.currentPlayer 
+      ? { ...p, scores: { ...p.scores, [category]: score } }
+      : p
+  );
   
   // Move to next player
-  gameState.currentPlayer = (gameState.currentPlayer + 1) % gameState.numPlayers;
-  gameState.rollsLeft = 3;
-  gameState.locked = [false, false, false, false, false];
-  gameState.phase = "ROLLING";
-  gameState.dice = [1, 1, 1, 1, 1];
+  newState.currentPlayer = (newState.currentPlayer + 1) % newState.numPlayers;
+  newState.rollsLeft = 3;
+  newState.locked = [false, false, false, false, false];
+  newState.phase = PHASES.ROLLING;
+  newState.dice = [1, 1, 1, 1, 1];
   
-  render();
+  return newState;
 }
 
 // Calculate score for a category
-function calculateScore(category) {
-  const dice = [...gameState.dice].sort((a, b) => a - b);
+function calculateScore(dice, category) {
+  const sortedDice = [...dice].sort((a, b) => a - b);
   
   switch(category) {
-    case 'ones': return dice.filter(d => d === 1).length;
-    case 'twos': return dice.filter(d => d === 2).length * 2;
-    case 'threes': return dice.filter(d => d === 3).length * 3;
-    case 'fours': return dice.filter(d => d === 4).length * 4;
-    case 'fives': return dice.filter(d => d === 5).length * 5;
-    case 'sixes': return dice.filter(d => d === 6).length * 6;
-    case 'threeKind': return hasNOfAKind(dice, 3) ? dice.reduce((a, b) => a + b, 0) : 0;
-    case 'fourKind': return hasNOfAKind(dice, 4) ? dice.reduce((a, b) => a + b, 0) : 0;
-    case 'fullHouse': return isFullHouse(dice) ? 25 : 0;
-    case 'smallStraight': return isSmallStraight(dice) ? 30 : 0;
-    case 'largeStraight': return isLargeStraight(dice) ? 40 : 0;
-    case 'twoPair': return isTwoPair(dice) ? 25 : 0;
-    case 'yahtzee': return isYahtzee(dice) ? 50 : 0;
-    default: return 0;
+    case 'ones': 
+      return sortedDice.filter(d => d === 1).length;
+    case 'twos': 
+      return sortedDice.filter(d => d === 2).length * 2;
+    case 'threes': 
+      return sortedDice.filter(d => d === 3).length * 3;
+    case 'fours': 
+      return sortedDice.filter(d => d === 4).length * 4;
+    case 'fives': 
+      return sortedDice.filter(d => d === 5).length * 5;
+    case 'sixes': 
+      return sortedDice.filter(d => d === 6).length * 6;
+    case 'threeKind': 
+      return hasNOfAKind(sortedDice, 3) ? sortedDice.reduce((a, b) => a + b, 0) : 0;
+    case 'fourKind': 
+      return hasNOfAKind(sortedDice, 4) ? sortedDice.reduce((a, b) => a + b, 0) : 0;
+    case 'fullHouse': 
+      return isFullHouse(sortedDice) ? 25 : 0;
+    case 'smallStraight': 
+      return isSmallStraight(sortedDice) ? 30 : 0;
+    case 'largeStraight': 
+      return isLargeStraight(sortedDice) ? 40 : 0;
+    case 'twoPair': 
+      return isTwoPair(sortedDice) ? 25 : 0;
+    case 'yahtzee': 
+      return isYahtzee(sortedDice) ? 50 : 0;
+    default: 
+      return 0;
   }
 }
 
@@ -264,6 +386,35 @@ function isLargeStraight(dice) {
 
 function isYahtzee(dice) {
   return dice.every(d => d === dice[0]);
+}
+
+// Check if game is over (all cells filled)
+function isGameOver(state) {
+  return state.players.every(player => 
+    CATEGORIES.every(category => player.scores[category.id] !== undefined)
+  );
+}
+
+// Calculate total scores for each player
+function calculatePlayerTotals(state) {
+  return state.players.map(player => 
+    CATEGORIES.reduce((total, category) => {
+      return total + (player.scores[category.id] || 0);
+    }, 0)
+  );
+}
+
+// Find the winner (player with highest score)
+function findWinner(totals) {
+  let maxScore = -1;
+  let winnerIndex = 0;
+  totals.forEach((total, i) => {
+    if (total > maxScore) {
+      maxScore = total;
+      winnerIndex = i;
+    }
+  });
+  return winnerIndex;
 }
 
 // Initialize setup screen on load
