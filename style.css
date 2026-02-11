@@ -11,20 +11,77 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
+    padding: 20px;
 }
 
 .container {
-    text-align: center;
     background: white;
     padding: 40px;
     border-radius: 10px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    max-width: 100%;
+    overflow-x: auto;
 }
 
 h1 {
     color: #333;
     margin-bottom: 30px;
     font-size: 2.5em;
+    text-align: center;
+}
+
+h2 {
+    color: #333;
+    margin-bottom: 20px;
+    font-size: 1.5em;
+    text-align: center;
+}
+
+h3 {
+    color: #666;
+    margin-bottom: 15px;
+    font-size: 1.1em;
+    text-align: center;
+}
+
+p {
+    text-align: center;
+    font-size: 1.1em;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.game-info {
+    margin-bottom: 30px;
+}
+
+.player-selection {
+    display: grid;
+    gap: 15px;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    margin-top: 20px;
+}
+
+.player-btn {
+    padding: 15px 20px;
+    font-size: 1em;
+    font-weight: bold;
+    color: white;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.player-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+}
+
+.player-btn:active {
+    transform: translateY(0);
 }
 
 .dice-container {
@@ -47,12 +104,20 @@ h1 {
     font-size: 2.5em;
     font-weight: bold;
     color: #667eea;
-    cursor: default;
-    transition: transform 0.1s ease;
+    cursor: pointer;
+    transition: all 0.2s ease;
 }
 
-.die:hover {
+.die:hover:not(.locked) {
     transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.die.locked {
+    background: #c3d9ff;
+    border-color: #764ba2;
+    color: #764ba2;
+    opacity: 0.7;
 }
 
 .roll-btn {
@@ -66,21 +131,22 @@ h1 {
     cursor: pointer;
     transition: transform 0.2s, box-shadow 0.2s;
     box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    display: block;
+    margin: 0 auto 30px;
 }
 
-.roll-btn:hover {
+.roll-btn:hover:not(:disabled) {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
 }
 
-.roll-btn:active {
+.roll-btn:active:not(:disabled) {
     transform: translateY(0);
 }
-h2 {
-    color: #333;
-    margin-top: 40px;
-    margin-bottom: 20px;
-    font-size: 1.5em;
+
+.roll-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 .scorecard {
@@ -95,7 +161,12 @@ h2 {
     background: #667eea;
     color: white;
     padding: 12px;
-    text-align: left;
+    text-align: center;
+    font-weight: bold;
+}
+
+.scorecard th.active-player {
+    background: #764ba2;
     font-weight: bold;
 }
 

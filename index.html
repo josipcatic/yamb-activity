@@ -3,51 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dice Roller</title>
+    <title>Yahtzee</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Dice Roller</h1>
-        
-        <h2 id="rollsLeft">Rolls Left: 3</h2>
-
-        <div class="dice-container">
-            <div class="die" id="die-1">1</div>
-            <div class="die" id="die-2">1</div>
-            <div class="die" id="die-3">1</div>
-            <div class="die" id="die-4">1</div>
-            <div class="die" id="die-5">1</div>
-        </div>
-        
-        <button id="rollButton" class="roll-btn">Roll Dice</button>
-
-        <h2>Score Card</h2>
-        <table class="scorecard">
-            <thead>
-                <tr>
-                    <th>Category</th>
-                    <th>Player 1</th>
-                    <th>Player 2</th>
-                    <th>Player 3</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr><td>Ones</td><td class="score-cell" data-category="ones" data-player="0"></td><td class="score-cell" data-category="ones" data-player="1"></td><td class="score-cell" data-category="ones" data-player="2"></td></tr>
-                <tr><td>Twos</td><td class="score-cell" data-category="twos" data-player="0"></td><td class="score-cell" data-category="twos" data-player="1"></td><td class="score-cell" data-category="twos" data-player="2"></td></tr>
-                <tr><td>Threes</td><td class="score-cell" data-category="threes" data-player="0"></td><td class="score-cell" data-category="threes" data-player="1"></td><td class="score-cell" data-category="threes" data-player="2"></td></tr>
-                <tr><td>Fours</td><td class="score-cell" data-category="fours" data-player="0"></td><td class="score-cell" data-category="fours" data-player="1"></td><td class="score-cell" data-category="fours" data-player="2"></td></tr>
-                <tr><td>Fives</td><td class="score-cell" data-category="fives" data-player="0"></td><td class="score-cell" data-category="fives" data-player="1"></td><td class="score-cell" data-category="fives" data-player="2"></td></tr>
-                <tr><td>Sixes</td><td class="score-cell" data-category="sixes" data-player="0"></td><td class="score-cell" data-category="sixes" data-player="1"></td><td class="score-cell" data-category="sixes" data-player="2"></td></tr>
-                <tr><td>Three of a Kind</td><td class="score-cell" data-category="threeKind" data-player="0"></td><td class="score-cell" data-category="threeKind" data-player="1"></td><td class="score-cell" data-category="threeKind" data-player="2"></td></tr>
-                <tr><td>Four of a Kind</td><td class="score-cell" data-category="fourKind" data-player="0"></td><td class="score-cell" data-category="fourKind" data-player="1"></td><td class="score-cell" data-category="fourKind" data-player="2"></td></tr>
-                <tr><td>Full House</td><td class="score-cell" data-category="fullHouse" data-player="0"></td><td class="score-cell" data-category="fullHouse" data-player="1"></td><td class="score-cell" data-category="fullHouse" data-player="2"></td></tr>
-                <tr><td>Small Straight</td><td class="score-cell" data-category="smallStraight" data-player="0"></td><td class="score-cell" data-category="smallStraight" data-player="1"></td><td class="score-cell" data-category="smallStraight" data-player="2"></td></tr>
-                <tr><td>Large Straight</td><td class="score-cell" data-category="largeStraight" data-player="0"></td><td class="score-cell" data-category="largeStraight" data-player="1"></td><td class="score-cell" data-category="largeStraight" data-player="2"></td></tr>
-                <tr><td>Two Pair</td><td class="score-cell" data-category="twoPair" data-player="0"></td><td class="score-cell" data-category="twoPair" data-player="1"></td><td class="score-cell" data-category="twoPair" data-player="2"></td></tr>
-                <tr><td>Yahtzee</td><td class="score-cell" data-category="yahtzee" data-player="0"></td><td class="score-cell" data-category="yahtzee" data-player="1"></td><td class="score-cell" data-category="yahtzee" data-player="2"></td></tr>
-            </tbody>
-        </table>
+    <div id="app"></div>
 
     <script src="main.js"></script>
 </body>
