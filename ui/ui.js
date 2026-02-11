@@ -1,9 +1,93 @@
 // UI Layer - Handles all DOM manipulation and rendering
 let gameState = null;
+let broadcastChannel = null;
+let clientId = null;
+
+// Generate or retrieve client ID (unique per tab/session)
+function getClientId() {
+  if (clientId) return clientId;
+  
+  let stored = sessionStorage.getItem('yahtzee-session-id');
+  if (!stored) {
+    stored = crypto.randomUUID();
+    sessionStorage.setItem('yahtzee-session-id', stored);
+  }
+  clientId = stored;
+  return clientId;
+}
+
+// Initialize BroadcastChannel for multi-tab synchronization
+function initBroadcastChannel() {
+  if (broadcastChannel) return;
+  
+  try {
+    broadcastChannel = new BroadcastChannel('yahtzee-game');
+    broadcastChannel.addEventListener('message', (event) => {
+      const { type, state } = event.data;
+      if (type === 'STATE_UPDATE') {
+        gameState = state;
+        render();
+      }
+    });
+  } catch (e) {
+    console.warn('BroadcastChannel not supported:', e);
+  }
+}
+
+// Broadcast state update to other tabs
+function broadcastStateUpdate(newState) {
+  // Save to localStorage as backup
+  localStorage.setItem('yahtzee-game-state', JSON.stringify(newState));
+  
+  if (broadcastChannel) {
+    broadcastChannel.postMessage({ type: 'STATE_UPDATE', state: newState });
+  }
+}
+
+// Restore game state from localStorage if available
+function restoreGameState() {
+  try {
+    const saved = localStorage.getItem('yahtzee-game-state');
+    if (saved) {
+      gameState = JSON.parse(saved);
+      getClientId();
+      initBroadcastChannel();
+      
+      // Check if this client is already assigned to a player
+      const clientAssigned = gameState.players.some(p => p.clientId === clientId);
+      
+      // If not assigned, assign to first available player (with null clientId)
+      if (!clientAssigned) {
+        for (let i = 0; i < gameState.players.length; i++) {
+          if (!gameState.players[i].clientId) {
+            gameState.players[i].clientId = clientId;
+            broadcastStateUpdate(gameState);
+            break;
+          }
+        }
+      }
+      
+      render();
+      return true;
+    }
+  } catch (e) {
+    console.warn('Failed to restore game state:', e);
+  }
+  return false;
+}
 
 // Initialize game with players
 function initializeGame(numPlayers) {
-  gameState = createInitialState(numPlayers);
+  getClientId();
+  initBroadcastChannel();
+  
+  // Create array of clientIds for all players
+  // First player gets this client's ID, others get null initially
+  const clientIds = Array(numPlayers).fill(null);
+  clientIds[0] = clientId;
+  
+  gameState = createInitialState(numPlayers, clientIds);
+  broadcastStateUpdate(gameState);
   render();
 }
 
@@ -40,6 +124,9 @@ function renderSetup() {
         <button class="player-btn" data-players="4">4 Players</button>
         <button class="player-btn" data-players="5">5 Players</button>
         <button class="player-btn" data-players="6">6 Players</button>
+      </div>
+      <div class="debug-section">
+        <button id="debugBtn" class="debug-btn">🐛 Simulate 2 Players</button>
       </div>
     </div>
   `;
@@ -95,6 +182,7 @@ function renderGameOver() {
 // Render game screen
 function renderGame() {
   const currentPlayer = gameState.players[gameState.currentPlayer];
+  const myTurn = isMyTurn();
   
   return `
     <div class="container">
@@ -102,19 +190,19 @@ function renderGame() {
       
       <div class="game-info">
         <h2>Current Player: ${currentPlayer.name}</h2>
-        <h3 id="rollsLeft">Rolls Left: ${gameState.rollsLeft}</h3>
+        ${myTurn ? `<h3 id="rollsLeft">Rolls Left: ${gameState.rollsLeft}</h3>` : `<h3 class="waiting">⏳ Waiting for ${currentPlayer.name}...</h3>`}
       </div>
 
       <div class="dice-container">
         ${gameState.dice.map((die, i) => `
-          <div class="die ${gameState.locked[i] ? 'locked' : ''}" id="die-${i}" data-die-index="${i}">
+          <div class="die ${gameState.locked[i] ? 'locked' : ''} ${!myTurn ? 'disabled' : ''}" id="die-${i}" data-die-index="${i}">
             ${die}
           </div>
         `).join('')}
       </div>
       
-      <button id="rollButton" class="roll-btn" ${gameState.phase !== PHASES.ROLLING ? 'disabled' : ''}>
-        ${gameState.phase === PHASES.ROLLING ? "Roll Dice" : "Select a score"}
+      <button id="rollButton" class="roll-btn" ${!myTurn || gameState.phase !== PHASES.ROLLING ? 'disabled' : ''}>
+        ${myTurn ? (gameState.phase === PHASES.ROLLING ? "Roll Dice" : "Select a score") : "Waiting for turn..."}
       </button>
 
       <h2>Score Card</h2>
@@ -122,7 +210,7 @@ function renderGame() {
         <thead>
           <tr>
             <th>Category</th>
-            ${gameState.players.map((p, i) => `<th class="${i === gameState.currentPlayer ? 'active-player' : ''}">${p.name}</th>`).join('')}
+            ${gameState.players.map((p, i) => `<th class="${i === gameState.currentPlayer ? 'active-player' : ''} ${p.clientId === clientId ? 'your-column' : ''}">${p.name}${p.clientId === clientId ? ' (You)' : ''}</th>`).join('')}
           </tr>
         </thead>
         <tbody>
@@ -131,9 +219,9 @@ function renderGame() {
               <td>${category.label}</td>
               ${gameState.players.map((player, playerIdx) => {
                 const score = player.scores[category.id];
-                const isSelectable = gameState.phase === PHASES.SELECTING_SCORE && playerIdx === gameState.currentPlayer && score === undefined;
+                const isSelectable = gameState.phase === PHASES.SELECTING_SCORE && playerIdx === gameState.currentPlayer && score === undefined && myTurn;
                 return `
-                  <td class="score-cell ${score !== undefined ? 'filled' : ''} ${isSelectable ? 'selectable' : ''}" 
+                  <td class="score-cell ${score !== undefined ? 'filled' : ''} ${isSelectable ? 'selectable' : ''} ${!myTurn ? 'disabled' : ''}" 
                       data-category="${category.id}" 
                       data-player="${playerIdx}">
                     ${score !== undefined ? score : ''}
@@ -148,6 +236,14 @@ function renderGame() {
   `;
 }
 
+// Check if current client is the active player
+function isMyTurn() {
+  if (!gameState || !gameState.players[gameState.currentPlayer]) {
+    return false;
+  }
+  return gameState.players[gameState.currentPlayer].clientId === clientId;
+}
+
 // Setup event listeners for setup screen
 function setupEventListeners() {
   document.querySelectorAll('.player-btn').forEach(btn => {
@@ -156,6 +252,14 @@ function setupEventListeners() {
       initializeGame(numPlayers);
     });
   });
+  
+  // Debug button for testing multiplayer
+  const debugBtn = document.getElementById('debugBtn');
+  if (debugBtn) {
+    debugBtn.addEventListener('click', () => {
+      initializeGame(2);
+    });
+  }
 }
 
 // Setup event listeners for game over screen
@@ -164,6 +268,7 @@ function setupGameOverEventListeners() {
   if (playAgainBtn) {
     playAgainBtn.addEventListener('click', () => {
       gameState = null;
+      localStorage.removeItem('yahtzee-game-state');
       render();
     });
   }
@@ -174,21 +279,23 @@ function setupGameEventListeners() {
   const rollButton = document.getElementById('rollButton');
   
   // Roll button handler
-  if (rollButton && gameState.phase === PHASES.ROLLING) {
+  if (rollButton && gameState.phase === PHASES.ROLLING && isMyTurn()) {
     rollButton.addEventListener('click', () => {
-      gameState = rollDice(gameState);
+      gameState = rollDice(gameState, clientId);
+      broadcastStateUpdate(gameState);
       render();
     });
   }
   
   // Dice click handlers with event delegation
   const diceContainer = document.querySelector('.dice-container');
-  if (diceContainer) {
+  if (diceContainer && isMyTurn()) {
     diceContainer.addEventListener('click', (e) => {
       const die = e.target.closest('.die');
-      if (die) {
+      if (die && !die.classList.contains('disabled')) {
         const index = parseInt(die.dataset.dieIndex);
-        gameState = lockDice(gameState, index);
+        gameState = lockDice(gameState, index, clientId);
+        broadcastStateUpdate(gameState);
         render();
       }
     });
@@ -196,12 +303,13 @@ function setupGameEventListeners() {
   
   // Score cell click handlers with event delegation
   const scoreTable = document.querySelector('.scorecard');
-  if (scoreTable) {
+  if (scoreTable && isMyTurn()) {
     scoreTable.addEventListener('click', (e) => {
       const cell = e.target.closest('.score-cell.selectable');
-      if (cell) {
+      if (cell && !cell.classList.contains('disabled')) {
         const category = cell.dataset.category;
-        gameState = selectScore(gameState, category);
+        gameState = selectScore(gameState, category, clientId);
+        broadcastStateUpdate(gameState);
         render();
       }
     });
@@ -210,5 +318,9 @@ function setupGameEventListeners() {
 
 // Initialize setup screen on load
 document.addEventListener('DOMContentLoaded', () => {
-  render();
+  // Try to restore game state from another tab
+  if (!restoreGameState()) {
+    // No saved state, show setup
+    render();
+  }
 });

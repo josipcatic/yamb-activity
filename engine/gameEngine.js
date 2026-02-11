@@ -22,7 +22,7 @@ const PHASES = {
 };
 
 // Create initial game state based on number of players
-function createInitialState(numPlayers) {
+function createInitialState(numPlayers, clientIds = []) {
   return {
     dice: [1, 1, 1, 1, 1],
     locked: [false, false, false, false, false],
@@ -33,13 +33,19 @@ function createInitialState(numPlayers) {
     players: Array.from({ length: numPlayers }, (_, i) => ({
       id: i,
       name: `Player ${i + 1}`,
+      clientId: clientIds[i] || null,
       scores: {}
     }))
   };
 }
 
 // Roll the dice
-function rollDice(state) {
+function rollDice(state, clientId) {
+  // Only allow if it's the current player's turn and they match the clientId
+  if (!isClientsTurn(state, clientId)) {
+    return state;
+  }
+  
   if (state.phase !== PHASES.ROLLING) return state;
 
   const newDice = [...state.dice];
@@ -59,7 +65,12 @@ function rollDice(state) {
 }
 
 // Lock/unlock a die
-function lockDice(state, index) {
+function lockDice(state, index, clientId) {
+  // Only allow if it's the current player's turn and they match the clientId
+  if (!isClientsTurn(state, clientId)) {
+    return state;
+  }
+  
   if (state.phase !== PHASES.ROLLING || state.rollsLeft === 3) {
     return state;
   }
@@ -69,8 +80,21 @@ function lockDice(state, index) {
   return newState;
 }
 
+// Check if the given clientId matches the current player
+function isClientsTurn(state, clientId) {
+  if (!state || !state.players[state.currentPlayer]) {
+    return false;
+  }
+  return state.players[state.currentPlayer].clientId === clientId;
+}
+
 // Handle score selection
-function selectScore(state, category) {
+function selectScore(state, category, clientId) {
+  // Only allow if it's the current player's turn and they match the clientId
+  if (!isClientsTurn(state, clientId)) {
+    return state;
+  }
+  
   const currentPlayer = state.players[state.currentPlayer];
   
   if (state.phase !== PHASES.SELECTING_SCORE) {
