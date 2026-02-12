@@ -343,5 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('app').innerHTML = `
     <h1>Loaded</h1>
     <p>SDK present: ${!!window.DiscordSDK}</p>
+    <p>Location: ${window.location.href}</p>
+    <p>App id: ${window.DiscordSDK ? window.DiscordSDK.applicationId : 'N/A'}</p>
   `;
 });
