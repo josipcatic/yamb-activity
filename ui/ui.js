@@ -320,7 +320,7 @@ function setupGameEventListeners() {
     });
   }
 }
-
+/*
 // Initialize Discord SDK and setup game on load
 document.addEventListener('DOMContentLoaded', async () => {
   // Initialize Discord SDK
@@ -337,4 +337,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.error('Failed to initialize Discord SDK');
     document.getElementById('app').innerHTML = '<p>Error: Discord SDK not available</p>';
   }
+});
+*/
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('app').innerHTML = `
+    <h1>Loaded</h1>
+    <p>SDK present: ${!!window.DiscordSDK}</p>
+  `;
 });
