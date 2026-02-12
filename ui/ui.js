@@ -6,29 +6,36 @@ let clientId = null;
 // Initialize Discord SDK
 async function initDiscordSdk() {
   try {
-    // Check if Discord SDK is available globally
-    if (typeof window.DiscordSDK !== 'undefined') {
-      discordSdk = window.DiscordSDK;
-      
-      // Get current user and set clientId
-      const user = await discordSdk.commands.getUser();
-      clientId = user.id;
-      
-      // Subscribe to activity instance state updates
-      discordSdk.subscribe('ACTIVITY_INSTANCE_STATE_UPDATE', (data) => {
-        if (data.state) {
-          gameState = data.state;
-          render();
-        }
-      });
-      
-      return true;
+    if (typeof window.DiscordSDK === 'undefined') {
+      console.error('Discord SDK script not loaded');
+      return false;
     }
+
+    // IMPORTANT: use your actual Application ID here
+    const applicationId = 1471258000097284239;
+
+    discordSdk = new window.DiscordSDK(applicationId);
+
+    await discordSdk.ready();
+
+    const user = await discordSdk.commands.getUser();
+    clientId = user.id;
+
+    discordSdk.subscribe('ACTIVITY_INSTANCE_STATE_UPDATE', (data) => {
+      if (data.state) {
+        gameState = data.state;
+        render();
+      }
+    });
+
+    return true;
+
   } catch (e) {
-    console.warn('Discord SDK not available:', e);
+    console.error("SDK init failed:", e);
+    return false;
   }
-  return false;
 }
+
 
 // Get client ID (from Discord SDK)
 function getClientId() {
