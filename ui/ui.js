@@ -6,8 +6,8 @@ let clientId = null;
 // Initialize Discord SDK
 async function initDiscordSdk() {
   try {
-    if (typeof window.DiscordSDK === 'undefined') {
-      console.error('Discord SDK script not loaded');
+    if (!window.DiscordSDK) {
+      document.body.innerHTML = "<h1>SDK GLOBAL MISSING</h1>";
       return false;
     }
 
