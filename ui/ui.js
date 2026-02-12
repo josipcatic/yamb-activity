@@ -1,4 +1,5 @@
 // UI Layer - Handles all DOM manipulation and rendering
+import { DiscordSDK } from "@discord/embedded-app-sdk";
 let gameState = null;
 let discordSdk = null;
 let clientId = null;
@@ -340,11 +341,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 */
 document.addEventListener('DOMContentLoaded', async () => {
+  
   const app = document.getElementById('app');
+  const discordSdk = new DiscordSDK("1471258000097284239");
+  const discordoSdk = new window.DiscordSDK.DiscordSDK("1471258000097284239");
+  if (!window.DiscordSDK) {
+    app.innerHTML = "<h1>SDK global missing</h1>";
 
-
-
-  const discordSdk = new window.DiscordSDK.DiscordSDK("1471258000097284239");
+  }
+  if (!discordSdk) {
+    app.innerHTML = "<h1>SDK constructor failed</h1>";
+  }
+  if (!discordoSdk) {
+    app.innerHTML = "<h1>SDK from window.DiscordSDK failed</h1>";
+  }
+  
 
   try {
     await discordSdk.ready();
@@ -354,9 +365,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.error(err);
   }
 
-    if (!window.DiscordSDK) {
-    app.innerHTML = "<h1>SDK global missing</h1>";
-    return;
-  }
+
 });
 
