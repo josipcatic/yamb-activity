@@ -319,7 +319,6 @@ function setupGameEventListeners() {
 document.addEventListener('DOMContentLoaded', async () => {
   // Initialize Discord SDK
   const sdkReady = await initDiscordSdk();
-  await discordSdk.commands.setActivityInstanceState({ state: null });
 
   
   if (sdkReady) {
