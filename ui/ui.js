@@ -339,11 +339,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 });
 */
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('app').innerHTML = `
-    <h1>Loaded</h1>
-    <p>SDK present: ${!!window.DiscordSDK}</p>
-    <p>Location: ${window.location.href}</p>
-    <p>App id: ${window.DiscordSDK ? window.DiscordSDK.applicationId : 'N/A'}</p>
-  `;
+document.addEventListener('DOMContentLoaded', async () => {
+  const app = document.getElementById('app');
+
+  if (!window.DiscordSDK) {
+    app.innerHTML = "<h1>SDK global missing</h1>";
+    return;
+  }
+
+  const discordSdk = new window.DiscordSDK.DiscordSDK("YOUR_APPLICATION_ID");
+
+  try {
+    await discordSdk.ready();
+    app.innerHTML = "<h1>SDK READY </h1>";
+  } catch (err) {
+    app.innerHTML = "<h1>SDK found but ready() failed </h1>";
+    console.error(err);
+  }
 });
+
