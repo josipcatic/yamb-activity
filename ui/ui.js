@@ -53,18 +53,15 @@ async function restoreGameState() {
   try {
     if (discordSdk) {
       const state = await discordSdk.commands.getActivityInstanceState();
-      if (state) {
+      if (state && state.version === 2) {
         gameState = state;
         render();
         return true;
       }
     }
-  } catch (e) {
-    console.warn('Failed to restore game state:', e);
-  }
+  } catch (e) {}
   return false;
 }
-
 // Initialize game with participants from Discord
 async function initializeGame() {
   try {
@@ -89,7 +86,11 @@ async function initializeGame() {
     const playerNames = sortedParticipants.map(p => p.username || `Player ${p.id}`);
     
     // Create initial state
-    gameState = createInitialState(numPlayers, clientIds);
+    gameState = {
+      version: 2,
+      ...createInitialState(numPlayers, clientIds)
+
+    };
     
     // Update player names from Discord
     gameState.players = gameState.players.map((p, i) => ({
