@@ -344,7 +344,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
 
-  const discordSdk = new window.DiscordSDK.DiscordSDK("YOUR_APPLICATION_ID");
+  const discordSdk = new window.DiscordSDK.DiscordSDK("1471258000097284239");
 
   try {
     await discordSdk.ready();
