@@ -342,10 +342,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 document.addEventListener('DOMContentLoaded', async () => {
   const app = document.getElementById('app');
 
-  if (!window.DiscordSDK) {
-    app.innerHTML = "<h1>SDK global missing</h1>";
-    return;
-  }
+
 
   const discordSdk = new window.DiscordSDK.DiscordSDK("YOUR_APPLICATION_ID");
 
@@ -355,6 +352,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   } catch (err) {
     app.innerHTML = "<h1>SDK found but ready() failed </h1>";
     console.error(err);
+  }
+
+    if (!window.DiscordSDK) {
+    app.innerHTML = "<h1>SDK global missing</h1>";
+    return;
   }
 });
 
