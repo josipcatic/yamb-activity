@@ -11,8 +11,7 @@ async function initDiscordSdk() {
       return false;
     }
 
-    // IMPORTANT: use your actual Application ID here
-    const applicationId = 1471258000097284239;
+    const applicationId = "1471258000097284239";
 
     discordSdk = new window.DiscordSDK(applicationId);
 
